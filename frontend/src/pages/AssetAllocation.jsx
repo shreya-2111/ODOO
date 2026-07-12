@@ -13,7 +13,7 @@ const AssetAllocation = () => {
 
   // Initial seed logs matching wireframe exactly
   const [transferLogs, setTransferLogs] = useState([
-    { text: 'Mac book - allocated to Priya Shah - Engineering', type: 'allocation' },
+    { text: 'Mac book - allocated to Shreya Raval - IT Support', type: 'allocation' },
     { text: 'Car #3 - Returned by Arjen Dev - condition good', type: 'return' }
   ]);
 
@@ -63,7 +63,7 @@ const AssetAllocation = () => {
       {/* Pink Alert Block */}
       <div className="wire-alert-pink mb-4 shadow-sm">
         <i className="bi bi-exclamation-octagon-fill"></i>
-        <span>AF-0114 - Dell Laptop. Active. Allocated to Priya Shah (Engineering). Asset reallocation is blocked - Submit a transfer request below.</span>
+        <span>AF-0114 - Dell Laptop. Active. Allocated to Shreya Raval (IT Support). Asset reallocation is blocked - Submit a transfer request below.</span>
       </div>
 
       {/* Transfer Request Form */}
