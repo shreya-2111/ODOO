@@ -1,30 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import Modal from '../components/common/Modal';
+import apiService from '../services/api';
 
 const OrganizationSetup = () => {
-  const { addDepartment } = useApp();
+  const { addNotification } = useApp();
   const [activeSubTab, setActiveSubTab] = useState('Departments');
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // Stateful lists to allow dynamic table rows
-  const [departmentsList, setDepartmentsList] = useState([
-    { name: 'Engineering', description: 'with car', focus: 'Focus Dept', status: 'Active' },
-    { name: 'Facilities', description: 'extra space', focus: '...', status: 'Active' },
-    { name: 'Field ops (NY)', description: 'semi rigid', focus: 'Field ops', status: 'Active' }
-  ]);
-
-  const [categoriesList, setCategoriesList] = useState([
-    { code: 'IT-HW', title: 'Electronics & IT Hardware', count: 12, status: 'Active' },
-    { code: 'VEH-FLEET', title: 'Company Vehicles', count: 4, status: 'Active' },
-    { code: 'FURN-OFFICE', title: 'Office Furniture', count: 18, status: 'Active' }
-  ]);
-
-  const [employeesList, setEmployeesList] = useState([
-    { name: 'Priya Shah', department: 'Engineering', email: 'pshah@company.com', role: 'Employee' },
-    { name: 'Arjen Dev', department: 'Engineering', email: 'adev@company.com', role: 'Employee' },
-    { name: 'Sarah Jenkins', department: 'Engineering', email: 'sjenkins@company.com', role: 'Inventory Manager' }
-  ]);
+  // Lists loaded from backend
+  const [departmentsList, setDepartmentsList] = useState([]);
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [employeesList, setEmployeesList] = useState([]);
 
   // Form Fields - Departments
   const [deptName, setDeptName] = useState('');
@@ -38,25 +25,49 @@ const OrganizationSetup = () => {
 
   // Form Fields - Employees
   const [empName, setEmpName] = useState('');
-  const [empDept, setEmpDept] = useState('Engineering');
+  const [empDept, setEmpDept] = useState('');
   const [empEmail, setEmpEmail] = useState('');
   const [empRole, setEmpRole] = useState('Employee');
+
+  const fetchAllData = () => {
+    apiService.departments.list()
+      .then(res => {
+        setDepartmentsList(res.data);
+        if (res.data.length > 0 && !empDept) {
+          setEmpDept(res.data[0].name);
+        }
+      })
+      .catch(err => console.error("Error loading departments:", err));
+
+    apiService.categories.list()
+      .then(res => setCategoriesList(res.data))
+      .catch(err => console.error("Error loading categories:", err));
+
+    apiService.employees.list()
+      .then(res => setEmployeesList(res.data))
+      .catch(err => console.error("Error loading employees:", err));
+  };
+
+  useEffect(() => {
+    fetchAllData();
+  }, []);
 
   const handleAddSubmit = (e) => {
     e.preventDefault();
 
     if (activeSubTab === 'Departments') {
       if (!deptName) return;
-      const newDept = {
+      apiService.departments.create({
         name: deptName,
-        description: deptDesc || 'Standard department',
-        focus: deptFocus || 'General Operations',
-        status: 'Active' // Set to Active by default on creation
-      };
-      setDepartmentsList([...departmentsList, newDept]);
-      addDepartment({ name: deptName, manager: deptFocus || 'Unassigned' });
+        code: deptFocus || deptName.substring(0, 3).toUpperCase(),
+        is_active: true
+      })
+      .then(() => {
+        addNotification('success', `Department registered: ${deptName}`);
+        fetchAllData();
+      })
+      .catch(() => addNotification('danger', 'Failed to register department'));
       
-      // Reset
       setDeptName('');
       setDeptDesc('');
       setDeptFocus('');
@@ -64,15 +75,17 @@ const OrganizationSetup = () => {
     
     else if (activeSubTab === 'Categories') {
       if (!catCode || !catTitle) return;
-      const newCat = {
+      apiService.categories.create({
+        name: catTitle,
         code: catCode.toUpperCase(),
-        title: catTitle,
-        count: Number(catCount) || 0,
-        status: 'Active' // Set to Active by default on creation
-      };
-      setCategoriesList([...categoriesList, newCat]);
+        metadata_fields: "{}"
+      })
+      .then(() => {
+        addNotification('success', `Category registered: ${catTitle}`);
+        fetchAllData();
+      })
+      .catch(() => addNotification('danger', 'Failed to register category'));
       
-      // Reset
       setCatCode('');
       setCatTitle('');
       setCatCount('0');
@@ -80,47 +93,67 @@ const OrganizationSetup = () => {
     
     else if (activeSubTab === 'Employee') {
       if (!empName || !empEmail) return;
-      const newEmp = {
-        name: empName,
-        department: empDept,
+
+      apiService.auth.signup({
         email: empEmail,
+        password: "Password#123",
+        full_name: empName,
         role: empRole
-      };
-      setEmployeesList([...employeesList, newEmp]);
+      })
+      .then(() => {
+        addNotification('success', `Employee registered: ${empName}`);
+        fetchAllData();
+      })
+      .catch(() => addNotification('danger', 'Failed to register employee'));
       
-      // Reset
       setEmpName('');
       setEmpEmail('');
-      setEmpDept('Engineering');
       setEmpRole('Employee');
     }
 
     setShowAddModal(false);
   };
 
-  // Toggle status of departments between Active and Inactive
-  const toggleDeptStatus = (index) => {
-    const updated = [...departmentsList];
-    updated[index].status = updated[index].status === 'Active' ? 'Inactive' : 'Active';
-    setDepartmentsList(updated);
-  };
-
-  // Toggle status of categories between Active and Inactive
-  const toggleCatStatus = (index) => {
-    const updated = [...categoriesList];
-    updated[index].status = updated[index].status === 'Active' ? 'Inactive' : 'Active';
-    setCategoriesList(updated);
-  };
-
-  // Delete an employee from the directory list
-  const deleteEmployee = (index) => {
-    if (window.confirm(`Are you sure you want to remove ${employeesList[index].name}?`)) {
-      const updated = employeesList.filter((_, idx) => idx !== index);
-      setEmployeesList(updated);
+  const toggleDeptStatus = (id, currentStatus) => {
+    if (currentStatus) {
+      apiService.departments.deactivate(id)
+        .then(() => {
+          addNotification('warning', 'Department deactivated');
+          fetchAllData();
+        })
+        .catch(() => addNotification('danger', 'Failed to deactivate department'));
+    } else {
+      apiService.departments.update(id, { is_active: true })
+        .then(() => {
+          addNotification('success', 'Department activated');
+          fetchAllData();
+        })
+        .catch(() => addNotification('danger', 'Failed to activate department'));
     }
   };
 
-  // Render sub-form dynamically in the Modal
+  const deleteCategory = (id) => {
+    if (window.confirm("Are you sure you want to delete this category?")) {
+      apiService.categories.delete(id)
+        .then(() => {
+          addNotification('info', 'Category deleted');
+          fetchAllData();
+        })
+        .catch(() => addNotification('danger', 'Failed to delete category'));
+    }
+  };
+
+  const deactivateEmployee = (id) => {
+    if (window.confirm("Are you sure you want to deactivate this employee?")) {
+      apiService.employees.deactivate(id)
+        .then(() => {
+          addNotification('warning', 'Employee deactivated');
+          fetchAllData();
+        })
+        .catch(() => addNotification('danger', 'Failed to deactivate employee'));
+    }
+  };
+
   const renderModalForm = () => {
     switch (activeSubTab) {
       case 'Departments':
@@ -138,21 +171,11 @@ const OrganizationSetup = () => {
               />
             </div>
             <div className="mb-3">
-              <label className="form-label small fw-semibold text-muted">Description / Tag</label>
+              <label className="form-label small fw-semibold text-muted">Department Code</label>
               <input 
                 type="text" 
                 className="form-control form-control-erp" 
-                placeholder="e.g. creative team" 
-                value={deptDesc}
-                onChange={(e) => setDeptDesc(e.target.value)}
-              />
-            </div>
-            <div className="mb-3">
-              <label className="form-label small fw-semibold text-muted">Focus Area / Manager</label>
-              <input 
-                type="text" 
-                className="form-control form-control-erp" 
-                placeholder="e.g. Brand Campaigns" 
+                placeholder="e.g. MKT" 
                 value={deptFocus}
                 onChange={(e) => setDeptFocus(e.target.value)}
               />
@@ -184,15 +207,6 @@ const OrganizationSetup = () => {
                 required
               />
             </div>
-            <div className="mb-3">
-              <label className="form-label small fw-semibold text-muted">Initial Asset Count</label>
-              <input 
-                type="number" 
-                className="form-control form-control-erp" 
-                value={catCount}
-                onChange={(e) => setCatCount(e.target.value)}
-              />
-            </div>
           </>
         );
       case 'Employee':
@@ -221,18 +235,6 @@ const OrganizationSetup = () => {
               />
             </div>
             <div className="mb-3">
-              <label className="form-label small fw-semibold text-muted">Primary Department</label>
-              <select 
-                className="form-select form-control-erp"
-                value={empDept}
-                onChange={(e) => setEmpDept(e.target.value)}
-              >
-                {departmentsList.map((d, idx) => (
-                  <option key={idx} value={d.name}>{d.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-3">
               <label className="form-label small fw-semibold text-muted">Role Scope</label>
               <select 
                 className="form-select form-control-erp"
@@ -240,8 +242,9 @@ const OrganizationSetup = () => {
                 onChange={(e) => setEmpRole(e.target.value)}
               >
                 <option value="Employee">Employee</option>
-                <option value="Inventory Manager">Inventory Manager</option>
                 <option value="Admin">Admin</option>
+                <option value="Auditor">Auditor</option>
+                <option value="Technician">Technician</option>
               </select>
             </div>
           </>
@@ -253,7 +256,6 @@ const OrganizationSetup = () => {
 
   return (
     <div className="container-fluid p-0">
-      {/* Unified Page Header Block */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 className="h4 fw-bold mb-1 text-dark">Organization Setup</h1>
@@ -261,7 +263,6 @@ const OrganizationSetup = () => {
         </div>
       </div>
 
-      {/* Tab Header row */}
       <div className="sub-tabs-bar">
         <div 
           className={`sub-tab-item ${activeSubTab === 'Departments' ? 'active' : ''}`}
@@ -291,41 +292,44 @@ const OrganizationSetup = () => {
         </div>
       </div>
 
-      {/* Tab Contents */}
       {activeSubTab === 'Departments' && (
         <div className="wire-card p-0 overflow-hidden shadow-sm">
           <table className="wire-table mb-0">
             <thead>
               <tr>
                 <th>Department</th>
-                <th>Description / Tag</th>
-                <th>Focus / Role</th>
+                <th>Code</th>
                 <th>Status</th>
                 <th style={{ width: '150px' }}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {departmentsList.map((dept, idx) => (
-                <tr key={idx}>
-                  <td className="fw-semibold text-dark">{dept.name}</td>
-                  <td>{dept.description}</td>
-                  <td>{dept.focus}</td>
-                  <td>
-                    <span className={`badge ${dept.status === 'Active' ? 'bg-success' : 'bg-secondary'} px-2 py-1 rounded-pill`}>
-                      {dept.status}
-                    </span>
-                  </td>
-                  <td>
-                    <button 
-                      className="btn-wire py-1 px-2 text-xs" 
-                      style={{ fontSize: '0.75rem', backgroundColor: dept.status === 'Active' ? 'var(--erp-primary)' : '#64748b', borderColor: dept.status === 'Active' ? 'var(--erp-primary)' : '#64748b' }} 
-                      onClick={() => toggleDeptStatus(idx)}
-                    >
-                      {dept.status === 'Active' ? 'Deactivate' : 'Activate'}
-                    </button>
-                  </td>
+              {departmentsList.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="text-center py-3 text-muted">No department records in database.</td>
                 </tr>
-              ))}
+              ) : (
+                departmentsList.map((dept, idx) => (
+                  <tr key={idx}>
+                    <td className="fw-semibold text-dark">{dept.name}</td>
+                    <td><code>{dept.code}</code></td>
+                    <td>
+                      <span className={`badge ${dept.is_active ? 'bg-success' : 'bg-secondary'} px-2 py-1 rounded-pill`}>
+                        {dept.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td>
+                      <button 
+                        className="btn-wire py-1 px-2 text-xs" 
+                        style={{ fontSize: '0.75rem', backgroundColor: dept.is_active ? 'var(--erp-primary)' : '#64748b', borderColor: dept.is_active ? 'var(--erp-primary)' : '#64748b' }} 
+                        onClick={() => toggleDeptStatus(dept.id, dept.is_active)}
+                      >
+                        {dept.is_active ? 'Deactivate' : 'Activate'}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -338,33 +342,31 @@ const OrganizationSetup = () => {
               <tr>
                 <th>Category Code</th>
                 <th>Category Title</th>
-                <th>Asset Count</th>
-                <th>Status</th>
                 <th style={{ width: '150px' }}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {categoriesList.map((cat, idx) => (
-                <tr key={idx}>
-                  <td><code>{cat.code}</code></td>
-                  <td className="fw-semibold text-dark">{cat.title}</td>
-                  <td>{cat.count}</td>
-                  <td>
-                    <span className={`badge ${cat.status === 'Active' ? 'bg-success' : 'bg-secondary'} px-2 py-1 rounded-pill`}>
-                      {cat.status}
-                    </span>
-                  </td>
-                  <td>
-                    <button 
-                      className="btn-wire py-1 px-2 text-xs" 
-                      style={{ fontSize: '0.75rem', backgroundColor: cat.status === 'Active' ? 'var(--erp-primary)' : '#64748b', borderColor: cat.status === 'Active' ? 'var(--erp-primary)' : '#64748b' }} 
-                      onClick={() => toggleCatStatus(idx)}
-                    >
-                      {cat.status === 'Active' ? 'Deactivate' : 'Activate'}
-                    </button>
-                  </td>
+              {categoriesList.length === 0 ? (
+                <tr>
+                  <td colSpan="3" className="text-center py-3 text-muted">No category records in database.</td>
                 </tr>
-              ))}
+              ) : (
+                categoriesList.map((cat, idx) => (
+                  <tr key={idx}>
+                    <td><code>{cat.code}</code></td>
+                    <td className="fw-semibold text-dark">{cat.name}</td>
+                    <td>
+                      <button 
+                        className="btn btn-sm btn-outline-danger py-1 px-2"
+                        style={{ fontSize: '0.75rem' }} 
+                        onClick={() => deleteCategory(cat.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -376,36 +378,39 @@ const OrganizationSetup = () => {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Primary Department</th>
                 <th>Email Profile</th>
                 <th>Role Scope</th>
                 <th style={{ width: '100px' }}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {employeesList.map((emp, idx) => (
-                <tr key={idx}>
-                  <td className="fw-semibold text-dark">{emp.name}</td>
-                  <td>{emp.department}</td>
-                  <td>{emp.email}</td>
-                  <td><span className="badge bg-light border text-secondary">{emp.role}</span></td>
-                  <td>
-                    <button 
-                      className="btn btn-sm btn-outline-danger py-1 px-2 text-xs" 
-                      style={{ fontSize: '0.75rem' }} 
-                      onClick={() => deleteEmployee(idx)}
-                    >
-                      Remove
-                    </button>
-                  </td>
+              {employeesList.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="text-center py-3 text-muted">No employee records in database.</td>
                 </tr>
-              ))}
+              ) : (
+                employeesList.map((emp, idx) => (
+                  <tr key={idx}>
+                    <td className="fw-semibold text-dark">{emp.full_name}</td>
+                    <td>{emp.email}</td>
+                    <td><span className="badge bg-light border text-secondary">{emp.role?.name}</span></td>
+                    <td>
+                      <button 
+                        className="btn btn-sm btn-outline-danger py-1 px-2 text-xs" 
+                        style={{ fontSize: '0.75rem' }} 
+                        onClick={() => deactivateEmployee(emp.id)}
+                      >
+                        Deactivate
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Add / Edit Modal switcher */}
       <Modal
         show={showAddModal}
         onClose={() => setShowAddModal(false)}

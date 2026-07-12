@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 from app.database import engine, SessionLocal
 from app.models.role import Role
