@@ -27,9 +27,10 @@ export const AuthProvider = ({ children }) => {
         username: dbUser.email.split('@')[0],
         fullName: dbUser.full_name,
         email: dbUser.email,
-        role: dbUser.role,
-        permissions: dbUser.role === 'Super Admin' || dbUser.role === 'Admin' ? ['all'] : ['read']
+        role: dbUser.role.name,
+        permissions: dbUser.role.name === 'Super Admin' || dbUser.role.name === 'Admin' ? ['all'] : ['read']
       };
+
       
       setUser(userData);
       localStorage.setItem('assetflow_user', JSON.stringify(userData));

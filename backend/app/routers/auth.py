@@ -16,4 +16,9 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
     user = authenticate_user(db, login_data.email, login_data.password)
     # Signs JWT token injected with the user role name for frontend dashboard renders
     access_token = create_access_token(subject=user.email, role=user.role.name)
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": user
+    }
+
