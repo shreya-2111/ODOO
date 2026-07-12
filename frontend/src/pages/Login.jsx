@@ -164,44 +164,7 @@ const Login = () => {
           )}
         </div>
 
-        {/* Demo Account Credentials Quick Loader */}
-        <div className="border-top pt-3">
-          <span className="small text-muted d-block mb-2 text-center fw-semibold">Load Default Roles Credentials:</span>
-          <div className="d-grid gap-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
-            <button 
-              type="button" 
-              className="btn btn-xs btn-outline-secondary py-1 text-start" 
-              style={{ fontSize: '0.725rem' }}
-              onClick={() => loadDemoAccount('admin@company.com', 'admin123')}
-            >
-              <i className="bi bi-shield-lock me-1"></i> Admin
-            </button>
-            <button 
-              type="button" 
-              className="btn btn-xs btn-outline-secondary py-1 text-start" 
-              style={{ fontSize: '0.725rem' }}
-              onClick={() => loadDemoAccount('manager@company.com', 'manager123')}
-            >
-              <i className="bi bi-box me-1"></i> Asset Mgr
-            </button>
-            <button 
-              type="button" 
-              className="btn btn-xs btn-outline-secondary py-1 text-start" 
-              style={{ fontSize: '0.725rem' }}
-              onClick={() => loadDemoAccount('head@company.com', 'head123')}
-            >
-              <i className="bi bi-people me-1"></i> Dept Head
-            </button>
-            <button 
-              type="button" 
-              className="btn btn-xs btn-outline-secondary py-1 text-start" 
-              style={{ fontSize: '0.725rem' }}
-              onClick={() => loadDemoAccount('employee@company.com', 'employee123')}
-            >
-              <i className="bi bi-person me-1"></i> Employee
-            </button>
-          </div>
-        </div>
+
       </div>
     </div>
   );
