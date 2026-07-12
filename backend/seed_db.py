@@ -37,13 +37,13 @@ def seed_database():
         super_admin_role = db.query(Role).filter(Role.name == "Super Admin").first()
 
         print("Seeding default Super Admin employee...")
-        admin_email = "shreya@example.com"
+        admin_email = "sarthak@example.com"
         existing_admin = db.query(User).filter(User.email == admin_email).first()
         if not existing_admin and it_dept and super_admin_role:
             admin_user = User(
                 email=admin_email,
-                hashed_password=hash_password("Shreya#2111"),
-                full_name="Shreya Raval",
+                hashed_password=hash_password("Sarthak#2111"),
+                full_name="Sarthak",
                 role_id=super_admin_role.id,
                 department_id=it_dept.id,
                 is_active=True
