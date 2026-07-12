@@ -55,7 +55,7 @@ const apiService = {
     list: () => api.get('/api/departments'),
     create: (data) => api.post('/api/departments', data),
     update: (id, data) => api.put(`/api/departments/${id}`, data),
-    deactivate: (id) => api.post(`/api/departments/${id}/deactivate`)
+    deactivate: (id) => api.delete(`/api/departments/${id}`)
   },
 
   // === Employee Management APIs ===
@@ -63,7 +63,7 @@ const apiService = {
     list: () => api.get('/api/employees'),
     create: (data) => api.post('/api/employees', data),
     update: (id, data) => api.put(`/api/employees/${id}`, data),
-    deactivate: (id) => api.post(`/api/employees/${id}/deactivate`)
+    deactivate: (id) => api.delete(`/api/employees/${id}`)
   },
 
   // === Asset Category Management APIs ===
