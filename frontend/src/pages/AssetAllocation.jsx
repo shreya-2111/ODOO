@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import apiService from '../services/api';
 
 const AssetAllocation = () => {
   const { addNotification } = useApp();
@@ -8,12 +9,26 @@ const AssetAllocation = () => {
   const [currentEmployee, setCurrentEmployee] = useState('Priya Shah (Engineering)');
   const [targetEmployee, setTargetEmployee] = useState('');
   const [reason, setReason] = useState('');
+  const [employees, setEmployees] = useState([]);
 
   // Initial seed logs matching wireframe exactly
   const [transferLogs, setTransferLogs] = useState([
     { text: 'Mac book - allocated to Priya Shah - Engineering', type: 'allocation' },
     { text: 'Car #3 - Returned by Arjen Dev - condition good', type: 'return' }
   ]);
+
+  useEffect(() => {
+    apiService.employees.list()
+      .then(res => {
+        setEmployees(res.data);
+        if (res.data.length > 0) {
+          // Set current assignee to the first database user dynamically
+          const firstUser = res.data[0];
+          setCurrentEmployee(`${firstUser.full_name} (${firstUser.role?.name || 'Employee'})`);
+        }
+      })
+      .catch(err => console.error("Error loading employees:", err));
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -33,6 +48,7 @@ const AssetAllocation = () => {
     setTargetEmployee('');
     setReason('');
   };
+
 
   return (
     <div className="container-fluid p-0">
@@ -77,10 +93,11 @@ const AssetAllocation = () => {
                     required
                   >
                     <option value="">Select Employee...</option>
-                    <option value="Arjen Dev">Arjen Dev</option>
-                    <option value="Sarah Jenkins">Sarah Jenkins</option>
-                    <option value="David Miller">David Miller</option>
-                    <option value="Marcus Vance">Marcus Vance</option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.full_name}>
+                        {emp.full_name} ({emp.role?.name || 'Employee'})
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
