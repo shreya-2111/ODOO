@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import apiService from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -16,101 +17,44 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (username, password) => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const lowerUser = username.toLowerCase();
-    
-    // 1. Admin
-    if (lowerUser === 'admin@company.com' || lowerUser === 'admin') {
-      if (password !== 'admin123') throw new Error('Incorrect password.');
+  const login = async (email, password) => {
+    try {
+      const res = await apiService.auth.login({ email, password });
+      const { access_token, user: dbUser } = res.data;
+      
       const userData = {
-        id: 'USR-01',
-        username: 'admin',
-        fullName: 'Sumit Administrator',
-        email: 'admin@company.com',
-        role: 'Admin',
-        permissions: ['all']
+        id: dbUser.id,
+        username: dbUser.email.split('@')[0],
+        fullName: dbUser.full_name,
+        email: dbUser.email,
+        role: dbUser.role,
+        permissions: dbUser.role === 'Super Admin' || dbUser.role === 'Admin' ? ['all'] : ['read']
       };
+      
       setUser(userData);
       localStorage.setItem('assetflow_user', JSON.stringify(userData));
-      localStorage.setItem('assetflow_token', 'mock-jwt-admin');
+      localStorage.setItem('assetflow_token', access_token);
       return { success: true };
+    } catch (err) {
+      throw new Error(err.response?.data?.detail || 'Incorrect email or password.');
     }
-    
-    // 2. Asset Manager
-    if (lowerUser === 'manager@company.com' || lowerUser === 'manager') {
-      if (password !== 'manager123') throw new Error('Incorrect password.');
-      const userData = {
-        id: 'USR-02',
-        username: 'manager',
-        fullName: 'Sarah Jenkins',
-        email: 'manager@company.com',
-        role: 'Asset Manager',
-        permissions: ['read', 'write', 'allocate', 'audit']
-      };
-      setUser(userData);
-      localStorage.setItem('assetflow_user', JSON.stringify(userData));
-      localStorage.setItem('assetflow_token', 'mock-jwt-manager');
-      return { success: true };
-    }
-    
-    // 3. Department Head
-    if (lowerUser === 'head@company.com' || lowerUser === 'head') {
-      if (password !== 'head123') throw new Error('Incorrect password.');
-      const userData = {
-        id: 'USR-03',
-        username: 'head',
-        fullName: 'Marcus Vance',
-        email: 'head@company.com',
-        role: 'Department Head',
-        permissions: ['read', 'booking']
-      };
-      setUser(userData);
-      localStorage.setItem('assetflow_user', JSON.stringify(userData));
-      localStorage.setItem('assetflow_token', 'mock-jwt-head');
-      return { success: true };
-    }
-    
-    // 4. Employee
-    if (lowerUser === 'employee@company.com' || lowerUser === 'employee') {
-      if (password !== 'employee123') throw new Error('Incorrect password.');
-      const userData = {
-        id: 'USR-04',
-        username: 'employee',
-        fullName: 'Arjen Dev',
-        email: 'employee@company.com',
-        role: 'Employee',
-        permissions: ['read', 'booking', 'maintenance']
-      };
-      setUser(userData);
-      localStorage.setItem('assetflow_user', JSON.stringify(userData));
-      localStorage.setItem('assetflow_token', 'mock-jwt-employee');
-      return { success: true };
-    }
-
-    throw new Error('Invalid email or password. Select a demo account below.');
   };
 
   const signup = async (fullName, email, password, role) => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    // Create session for signed up user
-    const userData = {
-      id: `USR-${Date.now()}`,
-      username: email.split('@')[0],
-      fullName: fullName,
-      email: email,
-      role: role, // Admin, Asset Manager, Department Head, Employee
-      permissions: role === 'Admin' ? ['all'] : role === 'Asset Manager' ? ['read', 'write', 'allocate'] : ['read']
-    };
-
-    setUser(userData);
-    localStorage.setItem('assetflow_user', JSON.stringify(userData));
-    localStorage.setItem('assetflow_token', `mock-jwt-signup-${Date.now()}`);
-    return { success: true };
+    try {
+      // 1. Post signup data to register in MySQL database
+      await apiService.auth.signup({
+        email,
+        password,
+        full_name: fullName,
+        role
+      });
+      
+      // 2. Perform login query to set authorization bearer headers
+      return await login(email, password);
+    } catch (err) {
+      throw new Error(err.response?.data?.detail || 'Registration failed. Please check inputs.');
+    }
   };
 
   const logout = () => {
